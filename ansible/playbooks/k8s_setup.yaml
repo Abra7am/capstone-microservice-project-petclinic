@@ -19,6 +19,12 @@
       EOF
       sysctl --system
 
+  - name: Add Kubernetes repository key and source list
+    shell: |
+      sudo mkdir -p /etc/apt/keyrings
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
   - name: Update apt-get
     shell: apt-get update -y
 
@@ -35,15 +41,6 @@
       - apt-transport-https  
       - curl
       - ca-certificates
-
-  - name: Add Kubernetes repository key and source list
-    shell: |
-      sudo mkdir -p /etc/apt/keyrings
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-  - name: Update apt-get after adding Kubernetes repo
-    shell: apt-get update -y
 
   - name: Install Kubernetes and Docker packages
     apt:
