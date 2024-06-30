@@ -25,6 +25,7 @@
   - name: Update apt-get
     shell: apt-get update
     register: apt_update
+
   - debug:
       var: apt_update
 
@@ -39,6 +40,7 @@
       - curl
       - ca-certificates
     register: install_https_packages
+
   - debug:
       var: install_https_packages
 
@@ -49,6 +51,7 @@
     args:
       creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     register: add_k8s_key
+
   - debug:
       var: add_k8s_key
 
@@ -58,12 +61,14 @@
     args:
       creates: /etc/apt/sources.list.d/kubernetes.list
     register: add_k8s_repo
+
   - debug:
       var: add_k8s_repo
 
   - name: Update apt-get with Kubernetes repository
     shell: apt-get update -q
     register: apt_update_k8s
+
   - debug:
       var: apt_update_k8s
 
@@ -77,12 +82,14 @@
         - docker.io
       state: present
     register: install_k8s
+
   - debug:
       var: install_k8s
 
   - name: Hold Kubernetes packages
     shell: apt-mark hold kubelet kubeadm kubectl
     register: hold_k8s
+
   - debug:
       var: hold_k8s
 
@@ -123,7 +130,7 @@
 - hosts: role_master
   become: true
   tasks:
-      
+
   - name: Pull Kubernetes images before installation
     shell: kubeadm config images pull
     changed_when: false  # This task is considered non-idempotent
@@ -157,31 +164,18 @@
       name: "kube_master"
       worker_join: "{{ join_command_for_workers.stdout.strip() }}"
 
-  - name: Install Helm
-    shell: |
-      cd /home/ubuntu
-      curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-      chmod 777 get_helm.sh
-      ./get_helm.sh
-
-  - name: Check Kubernetes cluster status
-    shell: kubectl get nodes
-    register: kubectl_get_nodes
-
-  - debug:
-      var: kubectl_get_nodes.stdout
-
-  - name: Check Kubernetes system pods status
-    shell: kubectl get pods -n kube-system
-    register: kubectl_get_pods
-
-  - debug:
-      var: kubectl_get_pods.stdout
-
 
 - hosts: role_worker
   become: true
   tasks:
+
+  - name: Wait for join command to be available
+    wait_for:
+      timeout: 300
+      delay: 10
+      state: present
+      path: "/home/ubuntu/.kube/config"
+    when: "'worker_join' in hostvars['kube_master']"
 
   - name: Join workers to cluster
     shell: "{{ hostvars['kube_master']['worker_join'] }}"
