@@ -33,16 +33,45 @@
       - curl
       - ca-certificates
 
-  - name: Add Kubernetes repository key and source list
+  - name: Add Kubernetes repository key
     shell: |
       sudo mkdir -p /etc/apt/keyrings
       curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list && \
-      apt-get update -q && \
-      apt-get install -qy kubelet kubectl kubeadm && \ 
-      apt-get install kubernetes-cni && \ 
-      apt-get install docker.io && \
-      apt-mark hold kubelet kubeadm kubectl
+    register: add_k8s_key
+  - debug:
+      var: add_k8s_key
+
+  - name: Add Kubernetes repository source list
+    shell: |
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    register: add_k8s_repo
+  - debug:
+      var: add_k8s_repo
+
+  - name: Update apt-get with Kubernetes repository
+    shell: apt-get update -q
+    register: apt_update
+  - debug:
+      var: apt_update
+
+  - name: Install Kubernetes components
+    apt:
+      name:
+        - kubelet
+        - kubectl
+        - kubeadm
+        - kubernetes-cni
+        - docker.io
+      state: present
+    register: install_k8s
+  - debug:
+      var: install_k8s
+
+  - name: Hold Kubernetes packages
+    shell: apt-mark hold kubelet kubeadm kubectl
+    register: hold_k8s
+  - debug:
+      var: hold_k8s
 
   - name: Add ubuntu to docker group
     user:
@@ -56,9 +85,6 @@
       state: restarted
       enabled: yes
 
-  # change the Docker cgroup driver by creating a configuration file `/etc/docker/daemon.json` 
-  # and adding the following line then restart deamon, docker and kubelet
-
   - name: Change the Docker cgroup
     shell: |
       mkdir /etc/containerd
@@ -70,6 +96,13 @@
       name: containerd
       state: restarted
       enabled: yes
+
+  - name: Check installed Kubernetes components
+    shell: dpkg -l | grep kube
+    register: kubernetes_packages
+
+  - debug:
+      var: kubernetes_packages.stdout
 
 
 - hosts: role_master
@@ -112,6 +145,21 @@
       chmod 777 get_helm.sh
       ./get_helm.sh
 
+  - name: Check Kubernetes cluster status
+    shell: kubectl get nodes
+    register: kubectl_get_nodes
+
+  - debug:
+      var: kubectl_get_nodes.stdout
+
+  - name: Check Kubernetes system pods status
+    shell: kubectl get pods -n kube-system
+    register: kubectl_get_pods
+
+  - debug:
+      var: kubectl_get_pods.stdout
+
+
 - hosts: role_worker
   become: true
   tasks:
@@ -121,3 +169,10 @@
     register: result_of_joining
 
   - debug: msg='{{ result_of_joining.stdout }}'
+
+  - name: Check Kubernetes cluster status from worker
+    shell: kubectl get nodes
+    register: kubectl_get_nodes_worker
+
+  - debug:
+      var: kubectl_get_nodes_worker.stdout
