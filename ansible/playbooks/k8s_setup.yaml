@@ -2,10 +2,10 @@
   become: true
   tasks:
 
-  - name: change hostnames
+  - name: Change hostnames
     shell: "hostnamectl set-hostname {{ hostvars[inventory_hostname]['private_dns_name'] }}"
 
-  - name: swap off
+  - name: Swap off
     shell: |
       free -m
       swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
@@ -19,7 +19,7 @@
       EOF
       sysctl --system
 
-  - name: update apt-get
+  - name: Update apt-get
     shell: apt-get update
 
   - name: Install packages that allow apt to be used over HTTPS
@@ -39,13 +39,16 @@
       curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
       echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list && \
       apt-get update -q && \
-      apt-get install -qy kubelet=1.27 kubectl=1.27 kubeadm=1.27 kubernetes-cni docker.io
+      apt-get install -qy kubelet=1.27 kubectl=1.27 kubeadm=1.27 && \ 
+      apt-get install kubernetes-cni && \ 
+      apt-get install docker.io && \
       apt-mark hold kubelet kubeadm kubectl
 
   - name: Add ubuntu to docker group
     user:
       name: ubuntu
-      group: docker
+      groups: docker
+      append: yes
 
   - name: Restart docker and enable
     service:
@@ -56,11 +59,11 @@
   # change the Docker cgroup driver by creating a configuration file `/etc/docker/daemon.json` 
   # and adding the following line then restart deamon, docker and kubelet
 
-  - name: change the Docker cgroup
+  - name: Change the Docker cgroup
     shell: |
       mkdir /etc/containerd
       containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
-      sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+      sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 
   - name: Restart containerd and enable
     service:
@@ -70,19 +73,17 @@
 
 
 - hosts: role_master
+  become: true
   tasks:
       
-  - name: pull kubernetes images before installation
-    become: yes
+  - name: Pull Kubernetes images before installation
     shell: kubeadm config images pull
 
-  - name: initialize the Kubernetes cluster using kubeadm
-    become: true
+  - name: Initialize the Kubernetes cluster using kubeadm
     shell: |
       kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=All
     
   - name: Setup kubeconfig for ubuntu user
-    become: true
     command: "{{ item }}"
     with_items:
      - mkdir -p /home/ubuntu/.kube
@@ -94,18 +95,17 @@
     shell: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 
   - name: Generate join command
-    become: true
-    command: kubeadm token create --print-join-command
+    shell: kubeadm token create --print-join-command
     register: join_command_for_workers
 
   - debug: msg='{{ join_command_for_workers.stdout.strip() }}'
 
-  - name: register join command for workers
+  - name: Register join command for workers
     add_host:
       name: "kube_master"
       worker_join: "{{ join_command_for_workers.stdout.strip() }}"
 
-  - name: install Helm 
+  - name: Install Helm
     shell: |
       cd /home/ubuntu
       curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
