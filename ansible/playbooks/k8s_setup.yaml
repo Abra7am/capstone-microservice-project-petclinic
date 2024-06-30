@@ -35,7 +35,7 @@
 
   - name: Add Kubernetes repository key
     shell: |
-      sudo mkdir -p /etc/apt/keyrings
+      mkdir -p /etc/apt/keyrings
       curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     register: add_k8s_key
   - debug:
