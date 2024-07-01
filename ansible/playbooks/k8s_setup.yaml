@@ -70,10 +70,13 @@
       shell: cat /tmp/kubernetes.gpg | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
     - name: Add Kubernetes repository
-      apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/"
-        state: present
-        filename: kubernetes
+      copy:
+        content: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/"
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        mode: '0644'
+
+    - name: Update apt cache
+      apt:
         update_cache: yes
 
     - name: Install Kubernetes components
