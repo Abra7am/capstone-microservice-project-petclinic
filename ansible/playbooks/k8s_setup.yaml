@@ -71,7 +71,7 @@
 
     - name: Add Kubernetes repository
       copy:
-        content: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/"
+        content: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /"
         dest: /etc/apt/sources.list.d/kubernetes.list
         mode: '0644'
 
