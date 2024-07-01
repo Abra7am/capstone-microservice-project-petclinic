@@ -29,24 +29,48 @@
           - apt-transport-https
           - curl
           - ca-certificates
-          - kubelet
-          - kubeadm
-          - kubectl
-          - kubernetes-cni
           - docker.io
         state: present
         update_cache: yes
 
-    - name: Add Kubernetes repository key
-      apt_key:
+    - name: Remove existing Kubernetes apt repository file
+      file:
+        path: /etc/apt/sources.list.d/kubernetes.list
+        state: absent
+
+    - name: Remove existing Kubernetes apt keyring
+      file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state: absent
+
+    - name: Add Kubernetes apt keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Kubernetes apt key
+      get_url:
         url: https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key
-        state: present
+        dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        mode: '0644'
 
     - name: Add Kubernetes repository
       apt_repository:
-        repo: deb https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /"
         state: present
         filename: kubernetes
+        update_cache: yes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+          - kubernetes-cni
+        state: present
+        update_cache: yes
 
     - name: Hold Kubernetes packages
       dpkg_selections:
