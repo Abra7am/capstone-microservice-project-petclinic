@@ -23,6 +23,27 @@
         - net.bridge.bridge-nf-call-iptables
         - net.ipv4.ip_forward
 
+    - name: Remove existing Kubernetes apt repository files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/kubernetes.list
+        - /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+        - /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:*.list
+
+    - name: Remove existing Kubernetes apt keyrings
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
+        - /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
     - name: Install required packages
       apt:
         name:
@@ -33,33 +54,19 @@
         state: present
         update_cache: yes
 
-    - name: Remove existing Kubernetes apt repository file
-      file:
-        path: /etc/apt/sources.list.d/kubernetes.list
-        state: absent
-
-    - name: Remove existing Kubernetes apt keyring
-      file:
-        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        state: absent
-
-    - name: Add Kubernetes apt keyring directory
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Add Kubernetes apt key
-      get_url:
+    - name: Add Kubernetes apt keyring
+      apt_key:
         url: https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key
-        dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        mode: '0644'
+        state: present
 
     - name: Add Kubernetes repository
-      apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /"
-        state: present
-        filename: kubernetes
+      copy:
+        content: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /"
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        mode: '0644'
+
+    - name: Update apt cache
+      apt:
         update_cache: yes
 
     - name: Install Kubernetes components
