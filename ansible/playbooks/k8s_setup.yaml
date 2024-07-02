@@ -219,11 +219,11 @@
       ignore_errors: yes
 
     - name: Ensure nodes are ready
-      command: kubectl wait --for=condition=Ready node --all --timeout=300s
+      command: kubectl get nodes -o json
       register: node_ready_result
       retries: 5
       delay: 30
-      ignore_errors: yes
+      until: node_ready_result.json | json_query("items[*].status.conditions[?(@.type=='Ready')].status") | select("match", "False") | length == 0
 
     - name: Remove not-ready taint from nodes
       command: kubectl taint nodes --all node.kubernetes.io/not-ready:NoSchedule-
