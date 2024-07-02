@@ -1,7 +1,6 @@
 - hosts: all
   become: true
   tasks:
-
   - name: change hostnames
     shell: "hostnamectl set-hostname {{ hostvars[inventory_hostname]['private_dns_name'] }}"
 
@@ -38,8 +37,8 @@
       curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
       echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list  && \
       sudo apt-get update -q && \
-      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* 
-      sudo apt-get kubernetes-cni docker.io && \
+      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* \
+      sudo apt-get install -qy kubernetes-cni docker.io && \
       sudo apt-mark hold kubelet kubeadm kubectl
 
   - name: Add ubuntu to docker group
@@ -52,9 +51,6 @@
       name: docker
       state: restarted
       enabled: yes
-
-  # change the Docker cgroup driver by creating a configuration file `/etc/docker/daemon.json` 
-  # and adding the following line then restart deamon, docker and kubelet
 
   - name: change the Docker cgroup
     shell: |
@@ -71,7 +67,6 @@
 
 - hosts: role_master
   tasks:
-      
   - name: pull kubernetes images before installation
     become: yes
     shell: kubeadm config images pull
@@ -115,7 +110,6 @@
 - hosts: role_worker
   become: true
   tasks:
-
   - name: Join workers to cluster
     shell: "{{ hostvars['kube_master']['worker_join'] }}"
     register: result_of_joining
