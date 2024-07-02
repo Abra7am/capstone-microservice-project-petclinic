@@ -124,16 +124,33 @@
         enabled: yes
         daemon_reload: yes
 
+    - name: Ensure /etc/containerd directory exists
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: '0755'
+
     - name: Configure containerd
       shell: |
-        containerd config default | tee /etc/containerd/config.toml 2>&1
-        sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+        containerd config default | tee /etc/containerd/config.toml
+        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 
     - name: Restart and enable containerd
       systemd:
         name: containerd
         state: restarted
         enabled: yes
+
+    - name: Remove existing Kubernetes cluster
+      shell: |
+        kubeadm reset -f || true
+        rm -rf /etc/kubernetes/manifests || true
+        rm -rf /var/lib/etcd || true
+        rm -rf /etc/cni/net.d || true
+        ip link delete cni0 || true
+        ip link delete flannel.1 || true
+        ip link delete kube-ipvs0 || true
+      ignore_errors: true
 
 - hosts: role_master
   become: true
@@ -183,16 +200,23 @@
 - hosts: role_worker
   become: true
   tasks:
+    - name: Remove previous Kubernetes installation
+      shell: |
+        kubeadm reset -f || true
+        rm -rf /etc/kubernetes/manifests || true
+        rm -rf /var/lib/etcd || true
+        rm -rf /etc/cni/net.d || true
+        ip link delete cni0 || true
+        ip link delete flannel.1 || true
+        ip link delete kube-ipvs0 || true
+      ignore_errors: true
+
     - name: Join workers to cluster
       command: "{{ worker_join }}"
       register: worker_join_result
       until: worker_join_result.rc == 0
       retries: 5
       delay: 30
-
-
-
-
 
 
 
