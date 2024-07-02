@@ -188,7 +188,7 @@
       register: worker_join_result
       until: worker_join_result.rc == 0
       retries: 5
-      delay: 120
+      delay: 35
 
     - name: Ensure nodes are ready
       command: kubectl wait --for=condition=Ready node --all --timeout=300s
