@@ -163,8 +163,9 @@ post {
         sh "aws ec2 delete-key-pair --region ${AWS_REGION} --key-name ${ANS_KEYPAIR}"
         sh "rm -rf ${ANS_KEYPAIR}"
         
+        always {
         // Workspace cleanup
-        cleanWs()
+        sh 'rm -rf * .* || true'
         echo 'Workspace has been cleaned'
     }
 }
