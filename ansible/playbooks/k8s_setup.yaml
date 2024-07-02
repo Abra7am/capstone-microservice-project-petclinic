@@ -56,10 +56,16 @@
   - name: Hold Kubernetes packages
     shell: sudo apt-mark hold kubelet kubeadm kubectl
 
+  - name: Create docker group if not exists
+    shell: groupadd docker
+    args:
+      creates: /etc/group
+
   - name: Add ubuntu to docker group
     user:
       name: ubuntu
-      group: docker
+      groups: docker
+      append: yes
 
   - name: Restart docker and enable
     service:
@@ -81,24 +87,17 @@
       state: restarted
       enabled: yes
 
-
 - hosts: role_master
   tasks:
   - name: pull kubernetes images before installation
     become: yes
     shell: kubeadm config images pull
-    when: kubeadm_images_pulled.stat.exists == False
-    register: kubeadm_images_pulled
-    changed_when: kubeadm_images_pulled.rc == 0
 
   - name: initialize the Kubernetes cluster using kubeadm
     become: true
     shell: |
       kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=All
-    when: kubernetes_initialized.stat.exists == False
-    register: kubernetes_initialized
-    changed_when: kubernetes_initialized.rc == 0
-
+    
   - name: Setup kubeconfig for ubuntu user
     become: true
     command: "{{ item }}"
@@ -106,16 +105,10 @@
      - mkdir -p /home/ubuntu/.kube
      - cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
      - chown ubuntu:ubuntu /home/ubuntu/.kube/config
-    when: kubeconfig_setup.stat.exists == False
-    register: kubeconfig_setup
-    changed_when: kubeconfig_setup.rc == 0
 
   - name: Install flannel pod network
     remote_user: ubuntu
     shell: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
-    when: flannel_installed.stat.exists == False
-    register: flannel_installed
-    changed_when: flannel_installed.rc == 0
 
   - name: Generate join command
     become: true
