@@ -195,7 +195,6 @@
     - name: Ensure nodes are ready
       command: kubectl wait --for=condition=Ready node --all --timeout=300s
       register: node_ready_result
-      until: node_ready_result.rc == 0
       retries: 5
       delay: 30
       ignore_errors: yes
