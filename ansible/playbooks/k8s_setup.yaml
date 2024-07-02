@@ -35,12 +35,13 @@
 
   - name: update apt-get and install kube packages
     shell: |
-      curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg && \
-      echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list && \
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list  && \
       sudo apt-get update -q && \
-      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* kubernetes-cni docker.io && \
+      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* 
+      sudo apt-get kubernetes-cni docker.io && \
       sudo apt-mark hold kubelet kubeadm kubectl
-      
+
   - name: Add ubuntu to docker group
     user:
       name: ubuntu
