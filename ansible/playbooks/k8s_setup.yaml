@@ -32,14 +32,29 @@
       - curl
       - ca-certificates
 
-  - name: update apt-get and install kube packages
+  - name: Add Kubernetes APT repository key
     shell: |
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list  && \
-      sudo apt-get update -q && \
-      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* \
-      sudo apt-get install -qy kubernetes-cni docker.io && \
-      sudo apt-mark hold kubelet kubeadm kubectl
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    args:
+      creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+  - name: Add Kubernetes APT repository
+    shell: |
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    args:
+      creates: /etc/apt/sources.list.d/kubernetes.list
+
+  - name: Update apt-get
+    shell: sudo apt-get update -q
+
+  - name: Install Kubernetes packages
+    shell: |
+      sudo apt-get install -qy kubelet=1.27.* kubectl=1.27.* kubeadm=1.27.* kubernetes-cni docker.io
+    args:
+      creates: /usr/bin/kubelet
+
+  - name: Hold Kubernetes packages
+    shell: sudo apt-mark hold kubelet kubeadm kubectl
 
   - name: Add ubuntu to docker group
     user:
@@ -54,9 +69,11 @@
 
   - name: change the Docker cgroup
     shell: |
-      mkdir /etc/containerd
+      mkdir -p /etc/containerd
       containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
       sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+    args:
+      creates: /etc/containerd/config.toml
 
   - name: Restart containerd and enable
     service:
@@ -70,12 +87,18 @@
   - name: pull kubernetes images before installation
     become: yes
     shell: kubeadm config images pull
+    when: kubeadm_images_pulled.stat.exists == False
+    register: kubeadm_images_pulled
+    changed_when: kubeadm_images_pulled.rc == 0
 
   - name: initialize the Kubernetes cluster using kubeadm
     become: true
     shell: |
       kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=All
-    
+    when: kubernetes_initialized.stat.exists == False
+    register: kubernetes_initialized
+    changed_when: kubernetes_initialized.rc == 0
+
   - name: Setup kubeconfig for ubuntu user
     become: true
     command: "{{ item }}"
@@ -83,10 +106,16 @@
      - mkdir -p /home/ubuntu/.kube
      - cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
      - chown ubuntu:ubuntu /home/ubuntu/.kube/config
+    when: kubeconfig_setup.stat.exists == False
+    register: kubeconfig_setup
+    changed_when: kubeconfig_setup.rc == 0
 
   - name: Install flannel pod network
     remote_user: ubuntu
     shell: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+    when: flannel_installed.stat.exists == False
+    register: flannel_installed
+    changed_when: flannel_installed.rc == 0
 
   - name: Generate join command
     become: true
@@ -106,6 +135,8 @@
       curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
       chmod 777 get_helm.sh
       ./get_helm.sh
+    args:
+      creates: /usr/local/bin/helm
 
 - hosts: role_worker
   become: true
