@@ -56,10 +56,11 @@
   - name: Hold Kubernetes packages
     shell: sudo apt-mark hold kubelet kubeadm kubectl
 
-  - name: Create docker group if not exists
-    shell: groupadd docker
-    args:
-      creates: /etc/group
+  - name: Ensure docker group exists
+    shell: |
+      if ! getent group docker > /dev/null; then
+        sudo groupadd docker;
+      fi
 
   - name: Add ubuntu to docker group
     user:
