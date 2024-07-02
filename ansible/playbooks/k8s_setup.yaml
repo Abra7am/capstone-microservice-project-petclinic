@@ -68,10 +68,15 @@
       groups: docker
       append: yes
 
-  - name: Restart docker and enable
+  - name: Ensure Docker is installed
+    apt:
+      name: docker.io
+      state: present
+
+  - name: Start and enable Docker service
     service:
       name: docker
-      state: restarted
+      state: started
       enabled: yes
 
   - name: change the Docker cgroup
