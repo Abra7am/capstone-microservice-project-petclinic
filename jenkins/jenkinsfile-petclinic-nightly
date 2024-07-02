@@ -167,6 +167,6 @@ post {
         // Workspace cleanup
         sh 'rm -rf * .* || true'
         echo 'Workspace has been cleaned'
+        }
     }
-}
 }
