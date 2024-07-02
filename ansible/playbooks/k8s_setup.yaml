@@ -212,34 +212,11 @@
     - name: Join workers to cluster
       command: "{{ worker_join }}"
       register: worker_join_result
-      retries: 5
-      delay: 30
+      delay: 20
       until: worker_join_result.rc == 0
       failed_when: "'timed out' in worker_join_result.stderr"
       ignore_errors: yes
 
-    - name: Ensure nodes are ready
-      command: kubectl get nodes -o json
-      register: node_ready_result
-      retries: 5
-      delay: 30
-      until: node_ready_result.json | json_query("items[*].status.conditions[?(@.type=='Ready')].status") | select("match", "False") | length == 0
-
     - name: Remove not-ready taint from nodes
       command: kubectl taint nodes --all node.kubernetes.io/not-ready:NoSchedule-
       ignore_errors: yes
-
-- hosts: role_master
-  become: true
-  tasks:
-    - name: Remove not-ready taint from control-plane node
-      command: kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule-
-      ignore_errors: yes
-
-    - name: Verify all nodes are ready
-      command: kubectl get nodes
-      register: verify_nodes_result
-
-    - name: Print verification result
-      debug:
-        msg: "{{ verify_nodes_result.stdout }}"
