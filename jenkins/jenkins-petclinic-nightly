@@ -1,23 +1,23 @@
 pipeline {
     agent any
-     stages {
+    stages {
         stage('Cleanup Workspace') {
             steps {
                 echo "Cleaning up the workspace"
                 deleteDir()
             }
-        }    
+        }
+    
     environment {
-        APP_NAME = "petclinic"
-        APP_REPO_NAME = "clarusway-repo/${APP_NAME}-app-dev"
-        AWS_ACCOUNT_ID = sh(script: 'aws sts get-caller-identity --query Account --output text', returnStdout: true).trim()
-        AWS_REGION = "us-east-1"
-        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        ANS_KEYPAIR = "petclinic-${APP_NAME}-dev-${BUILD_NUMBER}.key"
-        ANSIBLE_PRIVATE_KEY_FILE = "${WORKSPACE}/${ANS_KEYPAIR}"
-        ANSIBLE_HOST_KEY_CHECKING = "False"
+        APP_NAME="petclinic"
+        APP_REPO_NAME="clarusway-repo/${APP_NAME}-app-dev"
+        AWS_ACCOUNT_ID=sh(script:'aws sts get-caller-identity --query Account --output text', returnStdout:true).trim()
+        AWS_REGION="us-east-1"
+        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ANS_KEYPAIR="petclinic-${APP_NAME}-dev-${BUILD_NUMBER}.key"
+        ANSIBLE_PRIVATE_KEY_FILE="${WORKSPACE}/${ANS_KEYPAIR}"
+        ANSIBLE_HOST_KEY_CHECKING="False"
     }
-
         stage('Create Key Pair for Ansible') {
             steps {
                 echo "Creating Key Pair for ${APP_NAME} App"
