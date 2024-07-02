@@ -1,13 +1,6 @@
 pipeline {
     agent any
     stages {
-        stage('Cleanup Workspace') {
-            steps {
-                echo "Cleaning up the workspace"
-                deleteDir()
-            }
-        }
-
         stage('Create Key Pair for Ansible') {
             environment {
                 APP_NAME = "petclinic"
