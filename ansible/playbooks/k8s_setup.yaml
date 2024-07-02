@@ -186,9 +186,10 @@
     - name: Join workers to cluster
       command: "{{ worker_join }}"
       register: worker_join_result
+      retries: 5
+      delay: 30
       until: worker_join_result.rc == 0
-      retries: 10
-      delay: 60
+      failed_when: "'timed out' in worker_join_result.stderr"
 
     - name: Ensure nodes are ready
       command: kubectl wait --for=condition=Ready node --all --timeout=300s
