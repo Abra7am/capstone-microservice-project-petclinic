@@ -1,5 +1,12 @@
 pipeline {
     agent any
+     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                echo "Cleaning up the workspace"
+                deleteDir()
+            }
+        }    
     environment {
         APP_NAME = "petclinic"
         APP_REPO_NAME = "clarusway-repo/${APP_NAME}-app-dev"
@@ -10,14 +17,6 @@ pipeline {
         ANSIBLE_PRIVATE_KEY_FILE = "${WORKSPACE}/${ANS_KEYPAIR}"
         ANSIBLE_HOST_KEY_CHECKING = "False"
     }
-
-    stages {
-        stage('Cleanup Workspace') {
-            steps {
-                echo "Cleaning up the workspace"
-                deleteDir()
-            }
-        }
 
         stage('Create Key Pair for Ansible') {
             steps {
